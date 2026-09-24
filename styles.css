@@ -231,6 +231,73 @@ button {
     transition: all 0.3s ease;
 }
 
+.user-chip {
+    max-width: 180px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #334155;
+    font-size: 0.875rem;
+    font-weight: 600;
+}
+
+.mobile-menu {
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    animation: slideInFromBottom 0.2s ease-out;
+}
+
+.mobile-nav-link {
+    display: block;
+    width: 100%;
+    padding: 0.75rem 0.25rem;
+    color: #475569;
+    font-size: 0.95rem;
+    font-weight: 600;
+    text-align: left;
+}
+
+.mobile-nav-link:hover {
+    color: #4f46e5;
+}
+
+.toast-notification {
+    position: fixed;
+    top: 5.5rem;
+    right: 1rem;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: min( calc(100vw - 2rem), 24rem );
+    padding: 0.9rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    border-radius: 0.85rem;
+    background: rgba(255, 255, 255, 0.94);
+    box-shadow: 0 16px 36px rgba(15, 23, 42, 0.16);
+    color: #334155;
+    font-size: 0.9rem;
+    font-weight: 600;
+    animation: toastIn 0.28s ease-out;
+}
+
+.toast-success > i { color: #059669; }
+.toast-error > i { color: #e11d48; }
+
+.toast-close {
+    margin-left: auto;
+    padding: 0.2rem;
+    color: #94a3b8;
+}
+
+.toast-close:hover { color: #334155; }
+
+@keyframes toastIn {
+    from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 /* Selection color */
 ::selection {
     background-color: #e0e7ff;

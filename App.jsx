@@ -7,22 +7,69 @@ const authFetch = (url, options = {}) => {
   return fetch(url, { ...options, headers });
 };
 
+const notify = (message, tone = 'info') => {
+  window.dispatchEvent(new CustomEvent('smarthire:toast', { detail: { message, tone } }));
+};
+
+const ToastHost = () => {
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    const handleToast = (event) => {
+      setToast(event.detail);
+      window.setTimeout(() => setToast(null), 3600);
+    };
+    window.addEventListener('smarthire:toast', handleToast);
+    return () => window.removeEventListener('smarthire:toast', handleToast);
+  }, []);
+
+  if (!toast) return null;
+  const isError = toast.tone === 'error';
+  return (
+    <div className={`toast-notification ${isError ? 'toast-error' : 'toast-success'}`} role="status" aria-live="polite">
+      <i className={`fas ${isError ? 'fa-circle-exclamation' : 'fa-circle-check'}`}></i>
+      <span>{toast.message}</span>
+      <button onClick={() => setToast(null)} aria-label="Dismiss notification" className="toast-close">
+        <i className="fas fa-xmark"></i>
+      </button>
+    </div>
+  );
+};
+
 // --- Components ---
 
-const Navbar = ({ activeTab, setActiveTab, candidateAuth, recruiterAuth, setCandidateAuth, setRecruiterAuth, candidateName, recruiterName, setSelectedRole }) => (
+const Navbar = ({ activeTab, setActiveTab, candidateAuth, recruiterAuth, setCandidateAuth, setRecruiterAuth, candidateName, recruiterName, setSelectedRole }) => {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const isAuthenticated = Boolean(candidateAuth || recruiterAuth);
+  const dashboardTab = candidateAuth ? 'candidate' : 'recruiter';
+  const displayName = candidateName || recruiterName || (candidateAuth || recruiterAuth || '').split('@')[0];
+  const goTo = (tab) => {
+    setActiveTab(tab);
+    setMenuOpen(false);
+  };
+
+  const logout = async () => {
+    try { await authFetch('/api/auth/logout', { method: 'POST' }); } catch (e) {}
+    setCandidateAuth(null);
+    setRecruiterAuth(null);
+    window.localStorage.removeItem('smarthire_session_token');
+    goTo('home');
+  };
+
+  return (
   <nav className="fixed top-0 left-0 right-0 glass-nav border-b border-white/40 z-50 shadow-sm shadow-indigo-100/50">
     <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-      <div className="flex items-center space-x-2 cursor-pointer" onClick={() => setActiveTab('home')}>
+      <button className="flex items-center space-x-2 cursor-pointer" onClick={() => goTo('home')} aria-label="SmartHire home">
         <div className="bg-gradient-to-br from-indigo-500 to-violet-600 p-1.5 rounded-lg shadow-md shadow-indigo-300/50">
           <i className="fas fa-bolt text-white text-2xl"></i>
         </div>
         <span className="text-xl font-bold text-slate-800 tracking-tight">SmartHire</span>
-      </div>
-      <div className="hidden md:flex space-x-8 text-sm font-medium">
+      </button>
+      <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
         {['home', 'about', 'contact'].map((tab) => (
           <button
             key={tab}
-            onClick={() => setActiveTab(tab)}
+            onClick={() => goTo(tab)}
             className={`capitalize relative py-1 transition-colors ${
               activeTab === tab ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'
             }`}
@@ -31,8 +78,13 @@ const Navbar = ({ activeTab, setActiveTab, candidateAuth, recruiterAuth, setCand
             <span className={`absolute -bottom-1 left-0 right-0 h-0.5 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-transform duration-300 origin-left ${activeTab === tab ? 'scale-x-100' : 'scale-x-0'}`}></span>
           </button>
         ))}
+        {isAuthenticated && (
+          <button onClick={() => goTo(dashboardTab)} className={activeTab === dashboardTab ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-800'}>
+            Dashboard
+          </button>
+        )}
       </div>
-      <div className="flex items-center gap-3">
+      <div className="hidden md:flex items-center gap-3">
         {!candidateAuth && !recruiterAuth ? (
           <button 
             onClick={() => {
@@ -45,26 +97,35 @@ const Navbar = ({ activeTab, setActiveTab, candidateAuth, recruiterAuth, setCand
           </button>
         ) : (
           <div className="flex items-center gap-3">
-            <span className="text-slate-700 text-sm">
-              {candidateAuth ? `Candidate: ${candidateName || candidateAuth}` : `Recruiter: ${recruiterName || recruiterAuth}`}
-            </span>
-            <button
-              onClick={() => {
-                setCandidateAuth(null);
-                setRecruiterAuth(null);
-                window.localStorage.removeItem('smarthire_session_token');
-                setActiveTab('home');
-              }}
-              className="text-slate-500 hover:text-slate-800 px-3 py-2 text-sm font-medium transition-colors"
-            >
+            <span className="user-chip" title={candidateAuth || recruiterAuth}>{displayName}</span>
+            <button onClick={logout} className="text-slate-500 hover:text-slate-800 px-3 py-2 text-sm font-medium transition-colors">
               Logout
             </button>
           </div>
         )}
       </div>
+      <button className="md:hidden p-2 text-slate-700" onClick={() => setMenuOpen(!menuOpen)} aria-label="Toggle navigation" aria-expanded={menuOpen}>
+        <i className={`fas ${menuOpen ? 'fa-xmark' : 'fa-bars'} text-lg`}></i>
+      </button>
     </div>
+    {menuOpen && (
+      <div className="md:hidden mobile-menu border-t border-white/50 px-4 py-4 space-y-2">
+        {['home', 'about', 'contact'].map(tab => (
+          <button key={tab} onClick={() => goTo(tab)} className="mobile-nav-link capitalize">{tab}</button>
+        ))}
+        {isAuthenticated ? (
+          <>
+            <button onClick={() => goTo(dashboardTab)} className="mobile-nav-link">Dashboard</button>
+            <button onClick={logout} className="mobile-nav-link text-rose-600">Logout</button>
+          </>
+        ) : (
+          <button onClick={() => { setSelectedRole(null); goTo('auth'); }} className="btn-primary w-full py-3 rounded-xl font-medium">Login / Sign Up</button>
+        )}
+      </div>
+    )}
   </nav>
-);
+  );
+};
 
 const Hero = ({ setActiveTab, setSelectedRole, scrollToFeatures }) => {
   const taglines = [
@@ -149,7 +210,7 @@ const AuthPage = ({ setCandidateAuth, setRecruiterAuth, setActiveTab, selectedRo
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!loginEmail || !loginPassword) {
-      alert('Please fill in all fields');
+      notify('Please fill in all fields', 'error');
       return;
     }
     
@@ -168,14 +229,14 @@ const AuthPage = ({ setCandidateAuth, setRecruiterAuth, setActiveTab, selectedRo
         setRecruiterAuth(data.user.email);
         setActiveTab('recruiter');
       }
-      alert(`Welcome, ${data.user.name || data.user.email}!`);
+      notify(`Welcome, ${data.user.name || data.user.email}!`, 'success');
       setLoginEmail('');
       setLoginPassword('');
       setSelectedRole(null);
       setLoading(false);
     } catch (error) {
       console.error('Error:', error);
-      alert(error.message || 'Login failed');
+      notify(error.message || 'Login failed', 'error');
       setLoading(false);
     }
   };
@@ -183,11 +244,11 @@ const AuthPage = ({ setCandidateAuth, setRecruiterAuth, setActiveTab, selectedRo
   const handleSignup = async (e) => {
     e.preventDefault();
     if (!signupName || !signupEmail || !signupPassword || !signupConfirmPassword) {
-      alert('Please fill in all fields');
+      notify('Please fill in all fields', 'error');
       return;
     }
     if (signupPassword !== signupConfirmPassword) {
-      alert('Passwords do not match');
+      notify('Passwords do not match', 'error');
       return;
     }
     
@@ -206,7 +267,7 @@ const AuthPage = ({ setCandidateAuth, setRecruiterAuth, setActiveTab, selectedRo
         setRecruiterAuth(signupEmail);
         setActiveTab('recruiter');
       }
-      alert('Account created successfully!');
+      notify('Account created successfully!', 'success');
       setSignupName('');
       setSignupEmail('');
       setSignupPassword('');
@@ -215,7 +276,7 @@ const AuthPage = ({ setCandidateAuth, setRecruiterAuth, setActiveTab, selectedRo
       setLoading(false);
     } catch (error) {
       console.error('Error:', error);
-      alert(error.message || 'Sign up failed');
+      notify(error.message || 'Sign up failed', 'error');
       setLoading(false);
     }
   };
@@ -803,7 +864,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
   const handleCreateResume = (e) => {
     e.preventDefault();
     if (!resumeForm.name || !resumeForm.email || !resumeForm.phone || !resumeForm.address) {
-      alert('Please fill in all required fields');
+      notify('Please fill in all required fields', 'error');
       return;
     }
     const snapshot = { ...resumeForm };
@@ -876,15 +937,15 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
         const ar = await fetch(`/api/candidate/applications?email=${encodeURIComponent(candidateAuth)}`);
         const a = await ar.json();
         if (a.success) setMyApps(a.applications);
-        alert('Application submitted successfully');
+        notify('Application submitted successfully', 'success');
         setSelectedJob(null);
         setApplyFile(null);
         setServerPreview(null);
       } else {
-        alert(data.error || 'Failed to apply');
+        notify(data.error || 'Failed to apply', 'error');
       }
     } catch (e) {
-      alert('Failed to apply');
+      notify('Failed to apply', 'error');
     }
   };
 
@@ -942,7 +1003,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
   const downloadPDF = () => {
     if (!createdResume) return;
     if (typeof window.html2pdf === 'undefined') {
-      alert('PDF export is not available. Refresh the page and try again.');
+      notify('PDF export is not available. Refresh the page and try again.', 'error');
       return;
     }
     const safeName = (createdResume.name || 'Resume').replace(/\s+/g, '_').replace(/[^\w.-]+/g, '');
@@ -999,7 +1060,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
     const run = () => {
       if (!root) {
         cleanup();
-        alert('Could not build resume for PDF.');
+        notify('Could not build resume for PDF.', 'error');
         return;
       }
       const worker = window.html2pdf().set(opt).from(root).save();
@@ -1008,7 +1069,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
         worker.then(finish).catch((err) => {
           console.error('PDF export failed', err);
           finish();
-          alert('Could not generate PDF. Try again or use Print to PDF from your browser.');
+          notify('Could not generate PDF. Try again or use Print to PDF from your browser.', 'error');
         });
       } else {
         window.setTimeout(finish, 2500);
@@ -1022,7 +1083,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
 
   const handleScan = async () => {
     if (!resumeText.trim()) {
-      alert('Please paste your resume text');
+      notify('Please paste your resume text', 'error');
       return;
     }
     
@@ -1038,7 +1099,7 @@ const CandidateSuite = ({ candidateAuth, setActiveTab }) => {
       setFeedback(data.feedback);
     } catch (error) {
       console.error('Error:', error);
-      alert('Failed to scan resume');
+      notify('Failed to scan resume', 'error');
     }
     setLoading(false);
   };
@@ -1451,15 +1512,15 @@ const RecruiterSuite = ({ recruiterAuth, setActiveTab }) => {
       const data = await res.json();
       if (data.success) {
         await loadJobs();
-        alert('Job posted');
+        notify('Job posted', 'success');
         setRecruiterTab('upload-resumes');
         setSelectedJobId(data.job.id);
         setPostForm({ company: '', position: '', location: '', mode: 'online', details: '', skills: '', openings: 1, close_date: '', experience: '', salary_range: '' });
       } else {
-        alert(data.error || 'Failed to post job');
+        notify(data.error || 'Failed to post job', 'error');
       }
     } catch (e) {
-      alert('Failed to post job');
+      notify('Failed to post job', 'error');
     }
     setLoading(false);
   };
@@ -1473,9 +1534,9 @@ const RecruiterSuite = ({ recruiterAuth, setActiveTab }) => {
       const res = await authFetch(`/api/jobs/${selectedJobId}/resumes`, { method: 'POST', headers: { 'X-User-Email': recruiterAuth, 'X-User-Type': 'recruiter' }, body: fd });
       const data = await res.json();
       if (data.success) setResumes(data.resumes);
-      else alert(data.error || 'Upload failed');
+      else notify(data.error || 'Upload failed', 'error');
     } catch (e) {
-      alert('Upload failed');
+      notify('Upload failed', 'error');
     }
     setLoading(false);
   };
@@ -1550,10 +1611,10 @@ const RecruiterSuite = ({ recruiterAuth, setActiveTab }) => {
         setAttachResumeId(null);
         // no need to reload applicants
       } else {
-        alert(data.error || 'Failed to attach resume');
+        notify(data.error || 'Failed to attach resume', 'error');
       }
     } catch (e) {
-      alert('Failed to attach resume');
+      notify('Failed to attach resume', 'error');
     }
   };
   return (
@@ -1893,7 +1954,7 @@ const Contact = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
-      alert('Message sent!');
+      notify('Message sent!', 'success');
       setFormData({ name: '', email: '', message: '' });
     } catch (error) {
       console.error('Error:', error);
@@ -2051,6 +2112,28 @@ const App = () => {
   };
 
   useEffect(() => {
+    const restoreSession = async () => {
+      if (!window.localStorage.getItem('smarthire_session_token')) return;
+      try {
+        const response = await authFetch('/api/auth/me');
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error('Session expired');
+        if (data.user.user_type === 'candidate') {
+          setCandidateAuth(data.user.email);
+          setCandidateName(data.user.name || '');
+          setActiveTab('candidate');
+        } else if (data.user.user_type === 'recruiter') {
+          setRecruiterAuth(data.user.email);
+          setRecruiterName(data.user.name || '');
+          setActiveTab('recruiter');
+        }
+      } catch (e) {
+        window.localStorage.removeItem('smarthire_session_token');
+      }
+    };
+    restoreSession();
+  }, []);
+  useEffect(() => {
     const handleScroll = () => {
       // Smooth scroll behavior
     };
@@ -2083,6 +2166,7 @@ const App = () => {
 
   return (
     <div className="text-slate-800 min-h-screen">
+      <ToastHost />
       <Navbar 
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 

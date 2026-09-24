@@ -1809,6 +1809,25 @@ def auth_logout():
         except Exception:
             pass
     return jsonify({'success': True})
+
+@app.route('/api/auth/me', methods=['GET'])
+def auth_me():
+    session = get_session()
+    if not session:
+        return jsonify({'error': 'Authentication required'}), 401
+    try:
+        conn = db_conn()
+        row = conn.execute(
+            'SELECT id, email, user_type, name FROM users WHERE email=?',
+            (session['email'],)
+        ).fetchone()
+        conn.close()
+        if not row:
+            return jsonify({'error': 'User not found'}), 404
+        return jsonify({'success': True, 'user': dict(row)})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/users/<email>/actions', methods=['GET'])
 def users_actions(email):
     try:
