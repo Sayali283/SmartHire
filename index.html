@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartHire - AI Recruitment Hub</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="text-slate-800">
+    <div id="root">
+      <div style="padding: 24px; font-family: system-ui, Arial; color: #1f2937">
+        <h2>Loading SmartHire&hellip;</h2>
+        <p>If this stays blank, open the browser console to see errors.</p>
+      </div>
+    </div>
+
+    <!-- React & React DOM from CDN -->
+    <script crossorigin="anonymous" src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin="anonymous" src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script crossorigin="anonymous" src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- PDF Generation Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- Chart.js for simple analytics charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Main App Script -->
+    <script type="text/babel" data-presets="env,react" src="App.jsx"></script>
+    <script type="text/babel" data-presets="env,react" src="index.js"></script>
+    
+    <!-- Error handling -->
+    <script>
+        window.addEventListener('error', (event) => {
+            console.error('Global error:', event.error);
+        });
+        console.log('SmartHire app loading...');
+        console.log('React:', typeof React !== 'undefined');
+        console.log('ReactDOM:', typeof ReactDOM !== 'undefined');
+        console.log('Babel:', typeof Babel !== 'undefined');
+    </script>
+    <noscript>
+      <div style="padding: 24px; font-family: system-ui, Arial; color: #b91c1c">
+        JavaScript is disabled. Please enable JavaScript to use SmartHire.
+      </div>
+    </noscript>
+</body>
+</html>
